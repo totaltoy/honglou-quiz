@@ -345,6 +345,26 @@ body {
 
 .cover-from { margin-top: 18px; font-size: 13.5px; letter-spacing: 0.08em; color: var(--cinnabar); }
 
+#btn-continue { margin-top: 14px; font-size: 14px; padding: 11px 26px; }
+.r-kicker-note { margin-top: 6px; font-size: 11px; color: var(--ink-3); letter-spacing: 0.06em; }
+.r-why { margin-top: 24px; border-top: 1px dashed var(--line); padding-top: 16px; text-align: left; }
+.r-why-title { text-align: center; font-size: 12px; letter-spacing: 0.26em; color: var(--gold-dark); margin-bottom: 10px; }
+.r-why-item { font-size: 13px; line-height: 1.85; color: var(--ink-2); padding: 3px 0; }
+.r-why-item b { color: var(--cinnabar); font-weight: 600; }
+.r-why-scene { color: var(--gold-dark); font-size: 12px; margin-right: 6px; }
+.reveal-back {
+  margin-top: 30px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  padding: 9px 20px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
 .r-actions {
   margin-top: 26px;
   display: flex;

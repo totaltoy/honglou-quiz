@@ -9,6 +9,23 @@
 
   var state = { idx: 0, answers: new Array(QUESTIONS.length).fill(null), busy: false };
   var lastResult = null;
+  var revealTimers = [];
+
+  /* 作答进度本地续存（刷新不丢） */
+  var LS_KEY = "thj_progress_v1";
+  function saveProgress() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ a: state.answers, i: state.idx })); } catch (e) {}
+  }
+  function loadProgress() {
+    try {
+      var s = JSON.parse(localStorage.getItem(LS_KEY));
+      if (s && s.a && s.a.length === QUESTIONS.length && s.i > 0 && s.i < QUESTIONS.length) return s;
+    } catch (e) {}
+    return null;
+  }
+  function clearProgress() {
+    try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  }
 
   /* 邀请链：?from=<角色id>，朋友测完显示"与邀请人的缘分" */
   var fromChar = (function () {
@@ -70,29 +87,40 @@
     setTimeout(function () {
       state.busy = false;
       state.idx++;
-      if (state.idx >= QUESTIONS.length) startReveal();
-      else renderQuestion("next");
+      if (state.idx >= QUESTIONS.length) {
+        state.idx = QUESTIONS.length - 1; // 停在最后一卷，允许返回修改
+        startReveal();
+      } else {
+        saveProgress();
+        renderQuestion("next");
+      }
     }, 300);
   }
 
   /* ---------------- 揭晓 ---------------- */
   function startReveal() {
     lastResult = scoreAnswers(state.answers);
+    clearProgress();
     var reveal = $("reveal");
     reveal.classList.remove("hidden");
     var hint = $("reveal-hint");
     var step = 0;
     hint.textContent = REVEAL_HINTS[0];
-    var timer = setInterval(function () {
+    revealTimers.push(setInterval(function () {
       step++;
       if (step < REVEAL_HINTS.length) hint.textContent = REVEAL_HINTS[step];
-    }, 800);
-    setTimeout(function () {
-      clearInterval(timer);
+    }, 800));
+    revealTimers.push(setTimeout(function () {
       reveal.classList.add("hidden");
       renderResult(lastResult);
       showScreen("result");
-    }, 2500);
+    }, 2500));
+  }
+
+  function cancelReveal() {
+    revealTimers.forEach(function (t) { clearTimeout(t); clearInterval(t); });
+    revealTimers = [];
+    $("reveal").classList.add("hidden");
   }
 
   /* ---------------- 结果 ---------------- */
@@ -116,6 +144,30 @@
 
     $("r-shadow").textContent = r.shadow.c.name + "（" + r.shadow.c.title + " · " + r.shadowPct + "%）";
     $("r-confidant").textContent = c.confidant;
+
+    // 「为什么是TA」：从作答中找出与该角色高维对应的证据
+    var why = $("r-why");
+    var items = whyEvidence(r);
+    var whyList = $("r-why-list");
+    whyList.innerHTML = "";
+    if (items.length) {
+      items.forEach(function (it) {
+        var div = document.createElement("div");
+        div.className = "r-why-item";
+        var sc = document.createElement("span");
+        sc.className = "r-why-scene";
+        sc.textContent = it.scene;
+        div.appendChild(sc);
+        div.appendChild(document.createTextNode("你选了「" + it.text + "」"));
+        var b = document.createElement("b");
+        b.textContent = " " + it.dim + " +" + it.val;
+        div.appendChild(b);
+        whyList.appendChild(div);
+        why.classList.remove("hidden");
+      });
+    } else {
+      why.classList.add("hidden");
+    }
 
     // 关系彩蛋
     if (fromChar) {
@@ -331,13 +383,20 @@
     // 雷达图
     drawRadarOn(ctx, r.u, W / 2, 985, 140, serif);
 
-    // 底部
+    // 底部（带测试入口网址，转发图片也能找到入口）
     setFont(fitSize("穿越到红楼梦，你会是谁？", 34, 640, 4), 4);
     ctx.fillStyle = "#2f2a24";
     ctx.fillText("穿越到红楼梦，你会是谁？", W / 2, H - 112);
-    setFont(20, 5);
+    var siteUrl = "";
+    try {
+      if (location.protocol === "https:" || location.protocol === "http:") {
+        siteUrl = (location.host + location.pathname.replace(/index\.html.*$/, "")).replace(/\/$/, "");
+      }
+    } catch (e) {}
+    var footer2 = siteUrl ? siteUrl + " · 太虚幻境身份册" : "太虚幻境 · 身份册 | 娱乐向二创测试";
+    setFont(fitSize(footer2, 22, 640, 2), 2);
     ctx.fillStyle = "#9a8f7d";
-    ctx.fillText("太虚幻境 · 身份册 | 娱乐向二创测试", W / 2, H - 64);
+    ctx.fillText(footer2, W / 2, H - 64);
     try { ctx.letterSpacing = "0px"; } catch (e) {}
     return canvas;
   }
@@ -398,6 +457,33 @@
   }
 
   /* ---------------- 分享 / 复制 / 弹层 ---------------- */
+  /* 「为什么是TA」证据：取用户与角色都突出的维度，回溯对应作答 */
+  function whyEvidence(r) {
+    var c = r.top.c;
+    var rows = DIMS.map(function (d, i) {
+      return { d: d, i: i, align: r.u[i] * (c.vector[d] / 5), cv: c.vector[d], uv: r.u[i] };
+    }).sort(function (a, b) { return b.align - a.align; });
+    var used = {};
+    var out = [];
+    rows.forEach(function (row) {
+      if (out.length >= 3) return;
+      if (row.cv < 2.5 || row.uv < 2.5) return;
+      var bestQ = -1, bestVal = 0;
+      QUESTIONS.forEach(function (q, qi) {
+        if (used[qi] || state.answers[qi] == null) return;
+        var v = q.options[state.answers[qi]].score[row.d] || 0;
+        if (v > bestVal) { bestVal = v; bestQ = qi; }
+      });
+      if (bestQ < 0 || bestVal < 1) return;
+      used[bestQ] = true;
+      var q = QUESTIONS[bestQ];
+      var text = q.options[state.answers[bestQ]].text;
+      if (text.length > 16) text = text.slice(0, 16) + "…";
+      out.push({ scene: q.scene, text: text, dim: row.d, val: bestVal });
+    });
+    return out;
+  }
+
   function shareText(r) {
     var c = r.top.c;
     var link = window.location.href.split(/[?#]/)[0] + "?from=" + c.id;
@@ -433,13 +519,11 @@
     ta.style.opacity = "0";
     document.body.appendChild(ta);
     ta.select();
-    try {
-      document.execCommand("copy");
-      toast("文案已复制，去粘贴吧");
-    } catch (e) {
-      toast("复制失败，请手动复制");
-    }
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
     document.body.removeChild(ta);
+    if (ok) toast("文案已复制，去粘贴吧");
+    else window.prompt("自动复制失败——请长按下方文案手动复制", text);
   }
 
   function openCardModal() {
@@ -461,15 +545,37 @@
   }
 
   $("btn-start").addEventListener("click", function () {
+    clearProgress();
+    $("btn-continue").classList.add("hidden");
     state.idx = 0;
     state.answers = new Array(QUESTIONS.length).fill(null);
     renderQuestion("next");
     showScreen("quiz");
   });
 
+  var saved = loadProgress();
+  if (saved) {
+    var bc = $("btn-continue");
+    bc.textContent = "继续上次作答（上次到第 " + CN[saved.i] + " 卷）";
+    bc.classList.remove("hidden");
+    bc.addEventListener("click", function () {
+      state.answers = saved.a.slice();
+      state.idx = saved.i;
+      renderQuestion("next");
+      showScreen("quiz");
+    });
+  }
+
   $("btn-back").addEventListener("click", function () {
     if (state.idx === 0 || state.busy) return;
     state.idx--;
+    saveProgress();
+    renderQuestion("back");
+  });
+
+  $("reveal-back").addEventListener("click", function () {
+    cancelReveal();
+    showScreen("quiz");
     renderQuestion("back");
   });
 

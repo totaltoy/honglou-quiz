@@ -159,7 +159,7 @@ const CHARACTERS = [
     tagline: "把苦日子过成段子，把人情处成亲人。",
     desc: "你自带一股田间的元气。别人在算计里打转，你用一颗真心加一段俏皮话，就能把全场焐热。你懂难处，所以更懂得笑；你受过恩，就记一辈子。这份接地气的智慧，是大观园里谁也学不来的。",
     tags: ["情绪价值满格", "大智若愚", "知足", "幽默感"],
-    vector: { 才情: 1, 世故: 1, 叛逆: 0, 果决: 1, 豁达: 5, 细腻: 1 },
+    vector: { 才情: 1.5, 世故: 1.5, 叛逆: 0.5, 果决: 1.5, 豁达: 4, 细腻: 1.5 },
     confidant: "王熙凤",
   },
   {
@@ -187,7 +187,7 @@ const CHARACTERS = [
     tagline: "划清界限，是我的温柔。",
     desc: "你活得极清醒，也极干脆。知道什么是留不住的，就亲手还回去；知道什么是消耗你的，就果断转身。别人说你冷，其实你只是不肯假装——宁缺毋滥，是你对世界最大的诚意。",
     tags: ["边界感", "极简", "决绝", "精神独立"],
-    vector: { 才情: 4, 世故: 0, 叛逆: 4, 果决: 5, 豁达: 0, 细腻: 1 },
+    vector: { 才情: 3.5, 世故: 0.5, 叛逆: 3.5, 果决: 4, 豁达: 0.5, 细腻: 1.5 },
     confidant: "妙玉",
   },
   {
@@ -362,7 +362,13 @@ const QUESTIONS = [
 
 /* ============================================================
  * 计分：用户答案 → 六维向量（归一化到 0~5）→ 与角色原型匹配
+ *
+ * STRETCH：按随机答题全量枚举（见 scripts/compute-stretch.js）得出的
+ * 各维度 p95 分位做的拉伸。用户原始分普遍只有满分值的 25~40%，
+ * 不拉伸时用户云挤在坐标系角落，极端角色（如黛玉）永远无法匹配。
+ * 拉伸后 p95 用户映射到 5.0，向量值 ≈ "在真实答题者中的相对位置"。
  * ============================================================ */
+const STRETCH = [2.13, 1.72, 2.0, 1.61, 2.0, 1.79];
 function dimMaxPossible() {
   return DIMS.map((d) =>
     QUESTIONS.reduce((sum, q) => {
@@ -382,7 +388,7 @@ function scoreAnswers(answers) {
   });
 
   const max = dimMaxPossible();
-  const u = DIMS.map((d, i) => (max[i] > 0 ? (raw[d] / max[i]) * 5 : 0));
+  const u = DIMS.map((d, i) => (max[i] > 0 ? Math.min(5, (raw[d] / max[i]) * 5 * STRETCH[i]) : 0));
 
   const ranked = CHARACTERS.map((c) => {
     const v = DIMS.map((d) => c.vector[d]);
@@ -391,16 +397,24 @@ function scoreAnswers(answers) {
   }).sort((a, b) => a.dist - b.dist);
 
   const MAX_DIST = Math.sqrt(DIMS.length) * 5;
-  const pct = (entry) => Math.round(55 + (1 - entry.dist / MAX_DIST) * 43);
+  // 契合度：贴近程度的参考值（非概率）。幂次放大差异，并保证名次间数值严格递减。
+  let prev = 100;
+  ranked.forEach((entry) => {
+    let p = Math.round(55 + 43 * Math.pow(1 - Math.min(1, entry.dist / MAX_DIST), 1.45));
+    if (p >= prev) p = prev - 1;
+    if (p < 50) p = 50;
+    prev = p;
+    entry.pct = p;
+  });
 
   return {
-    u, // 归一化六维（0~5）
+    u, // 拉伸后六维（0~5）
     raw, // 原始累加分
     ranked,
     top: ranked[0],
     shadow: ranked[1],
-    topPct: pct(ranked[0]),
-    shadowPct: pct(ranked[1]),
+    topPct: ranked[0].pct,
+    shadowPct: ranked[1].pct,
   };
 }
 

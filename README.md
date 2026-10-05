@@ -51,7 +51,15 @@ python3 -m http.server 4173
 - **加角色**：`CHARACTERS` 数组，`vector` 是角色在六维上的原型（0~5）；
 - **调判词 / 文案**：`quote / tagline / desc / tags / confidant` 字段直接改。
 
-改完跑一下区分度自测（Node 即可，无需浏览器）：
+改完跑校验三件套（Node 即可，无需浏览器）：
+
+```bash
+node scripts/test-scoring.js   # 人格画像落位 + 全组合覆盖
+node scripts/dist-report.js    # 16 角色被测出占比（防偏斜：健康的分布约在 1%~14%）
+node /tmp/cov.js               # 覆盖率明细
+```
+
+**重要**：`STRETCH` 常量是按题目集全量枚举算出的分位拉伸系数（`scripts/compute-stretch.js` 生成）。改动题目的分值后必须重跑 `compute-stretch.js` 并更新 `STRETCH`，否则用户分布会重新偏斜。
 
 ```bash
 node scripts/test-scoring.js
