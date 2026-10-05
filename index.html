@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>太虚幻境 · 身份册 —— 穿越红楼梦，你会是谁？</title>
+  <meta name="description" content="十二道情境题，测测你穿越到红楼梦会变成谁：黛玉、宝钗、宝玉、凤姐、湘云、妙玉……领取你的红楼身份卡。">
+  <meta name="theme-color" content="#f6f0e2">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%239e3b2c'/%3E%3Crect x='6' y='6' width='52' height='52' rx='6' fill='none' stroke='%23f8f1e0' stroke-opacity='.45' stroke-width='2'/%3E%3Ctext x='32' y='45' font-size='36' text-anchor='middle' fill='%23f8f1e0' font-family='Songti SC,STSong,serif' font-weight='700'%3E梦%3C/text%3E%3C/svg%3E">
+  <meta property="og:title" content="太虚幻境 · 身份册">
+  <meta property="og:description" content="穿越到红楼梦，你会是谁？十二道情境题，领取你的红楼身份卡。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="太虚幻境 · 身份册">
+  <meta name="twitter:description" content="穿越到红楼梦，你会是谁？十二道情境题，领取你的红楼身份卡。">
+  <meta name="twitter:image" content="assets/og-image.jpg">
+  <link rel="stylesheet" href="css/style.css?v=5">
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ 封面 ============ -->
+  <section class="screen active" id="screen-cover">
+    <div class="cover-inner">
+      <div class="seal seal-corner">梦</div>
+      <h1 class="cover-title">太虚幻境</h1>
+      <div class="cover-sub">身份册</div>
+      <div class="cover-divider"><i></i><b></b><i></i></div>
+      <p class="cover-intro">警幻仙子案头的名册，翻开了新的一页。<br>此次入梦者——<em>你</em>。</p>
+      <p class="cover-intro dim">十二道情境，问的是心性；<br>你在红楼梦里，会是谁？</p>
+      <p class="cover-from hidden" id="from-note"></p>
+      <button class="btn btn-primary btn-lg" id="btn-start">入 幻 境</button>
+      <div class="cover-meta">十二卷 · 约三分钟 · 娱乐向二创</div>
+    </div>
+  </section>
+
+  <!-- ============ 答题 ============ -->
+  <section class="screen" id="screen-quiz">
+    <header class="quiz-head">
+      <button class="btn-back" id="btn-back" aria-label="上一题">‹ 上一卷</button>
+      <div class="quiz-progress-label"><span id="q-idx">一</span>&nbsp;/&nbsp;十二</div>
+    </header>
+    <div class="progress"><i id="progress-fill"></i></div>
+    <div class="q-card" id="q-card">
+      <div class="q-scene" id="q-scene"></div>
+      <h2 class="q-text" id="q-text"></h2>
+      <div class="options" id="options"></div>
+    </div>
+  </section>
+
+  <!-- ============ 结果 ============ -->
+  <section class="screen" id="screen-result">
+    <div class="result-card">
+      <div class="seal seal-result" id="r-seal">册</div>
+      <div class="r-kicker">册上有名 · 匹配度 <b id="r-pct">--%</b></div>
+      <h2 class="r-name" id="r-name"></h2>
+      <div class="r-alias" id="r-alias"></div>
+      <div class="r-quote"><span id="r-quote-text"></span><span class="r-quote-src" id="r-quote-src"></span></div>
+      <p class="r-tagline" id="r-tagline"></p>
+      <p class="r-desc" id="r-desc"></p>
+      <div class="r-tags" id="r-tags"></div>
+      <div class="r-radar"><canvas id="radar"></canvas></div>
+      <div class="r-dims" id="r-dims"></div>
+      <div class="r-extras">
+        <div class="r-extra"><span class="r-extra-k">影子人格</span><span id="r-shadow"></span></div>
+        <div class="r-extra"><span class="r-extra-k">知音</span><span id="r-confidant"></span></div>
+      </div>
+      <div class="r-relation hidden" id="r-relation">
+        <div class="r-rel-head"><span class="r-extra-k">缘分</span><b id="r-rel-title"></b></div>
+        <p id="r-rel-line"></p>
+      </div>
+    </div>
+    <div class="r-actions">
+      <button class="btn btn-primary" id="btn-card">生成身份卡</button>
+      <button class="btn" id="btn-copy">复制邀请文案</button>
+      <button class="btn btn-ghost" id="btn-retry">再入一梦</button>
+    </div>
+    <p class="foot-note">本测试为娱乐向二创，人物解读仅供参考。</p>
+  </section>
+
+  <!-- ============ 揭晓过场 ============ -->
+  <div id="reveal" class="reveal hidden">
+    <div class="reveal-inner">
+      <div class="reveal-seal seal">册</div>
+      <p class="reveal-hint" id="reveal-hint">警幻仙子翻开名册……</p>
+    </div>
+  </div>
+
+  <!-- ============ 身份卡弹层 ============ -->
+  <div id="card-modal" class="modal hidden">
+    <div class="modal-head">长按保存身份卡</div>
+    <div class="modal-img-wrap"><img id="card-img" alt="红楼身份卡"></div>
+    <div class="modal-actions">
+      <a class="btn" id="btn-download" download="honglou-card.png">下载图片</a>
+      <button class="btn btn-ghost" id="btn-close-card">关闭</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+</div>
+<script src="js/data.js?v=5"></script>
+<script src="js/app.js?v=5"></script>
+</body>
+</html>
